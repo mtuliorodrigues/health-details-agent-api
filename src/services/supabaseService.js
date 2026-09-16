@@ -2,8 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
-const ownerId = process.env.SUPABASE_OWNER_ID;
-const supabase = supabaseUrl && supabaseSecretKey && ownerId
+const supabase = supabaseUrl && supabaseSecretKey
   ? createClient(supabaseUrl, supabaseSecretKey, { auth: { persistSession: false, autoRefreshToken: false } })
   : null;
 
@@ -12,7 +11,7 @@ async function persistCollection(collection) {
   const { device, clients } = collection;
   const { data: savedDevice, error: deviceError } = await supabase
     .from('devices')
-    .upsert({ ip: device.ip, vendor: device.vendor, identity: device.identity, uptime: device.uptime, owner_id: ownerId, last_collected_at: device.collectedAt }, { onConflict: 'ip' })
+    .upsert({ ip: device.ip, vendor: device.vendor, identity: device.identity, uptime: device.uptime, last_collected_at: device.collectedAt }, { onConflict: 'ip' })
     .select('id')
     .single();
   if (deviceError) throw deviceError;
