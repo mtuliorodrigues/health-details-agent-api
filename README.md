@@ -1,5 +1,7 @@
 # Host Health Diagnostic Agent API
 
+Para acesso direto externo, encaminhe uma porta TCP do roteador para a porta configurada deste agente na máquina que o executa. O agente continua aceitando somente IPs IPv4 privados como alvo de coleta.
+
 Agente local que consulta os equipamentos de rede e registra o histórico no Supabase. Ele deve rodar em uma máquina que alcance os IPs privados dos equipamentos.
 
 ## Executar

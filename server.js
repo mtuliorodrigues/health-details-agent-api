@@ -10,7 +10,6 @@ if (typeof process.loadEnvFile === 'function') {
 
 const app = express();
 const PORT = process.env.PORT || 8000;
-const API_KEY = process.env.API_KEY;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 30;
 const requestBuckets = new Map();
@@ -32,10 +31,6 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api', (req, res, next) => {
-  const isLocal = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
-  if (!isLocal && !(API_KEY && req.get('x-api-key') === API_KEY)) {
-    return res.status(401).json({ status: 'error', message: 'Autenticação necessária para acesso remoto.' });
-  }
   const now = Date.now();
   const bucket = requestBuckets.get(req.ip) || [];
   const recentRequests = bucket.filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
@@ -59,6 +54,6 @@ app.use((error, req, res, next) => {
   res.status(error.statusCode || 500).json({ status: 'error', message: error.statusCode ? error.message : 'Erro interno do servidor.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Host Health Diagnostic running at http://127.0.0.1:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Host Health Diagnostic running on port ${PORT}`);
 });
