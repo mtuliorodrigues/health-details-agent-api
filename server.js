@@ -1,12 +1,13 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const healthRoutes = require('./src/routes/healthRoutes');
-const collectorRoutes = require('./src/routes/collectorRoutes');
 
 if (typeof process.loadEnvFile === 'function') {
   process.loadEnvFile(path.join(__dirname, '.env'));
 }
+
+const healthRoutes = require('./src/routes/healthRoutes');
+const collectorRoutes = require('./src/routes/collectorRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
