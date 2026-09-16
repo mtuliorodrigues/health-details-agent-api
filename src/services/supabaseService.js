@@ -60,4 +60,14 @@ async function listCollectionHistory(limit = 30) {
   return { history: data };
 }
 
-module.exports = { persistCollection, listCollectionHistory };
+async function deleteCollectionHistory(id) {
+  if (!supabase) return { deleted: false, reason: 'Supabase não configurado.' };
+  const { error, count } = await supabase
+    .from('collection_history')
+    .delete({ count: 'exact' })
+    .eq('id', id);
+  if (error) throw error;
+  return { deleted: count === 1 };
+}
+
+module.exports = { persistCollection, listCollectionHistory, deleteCollectionHistory };

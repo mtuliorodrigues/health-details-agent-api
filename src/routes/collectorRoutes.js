@@ -2,7 +2,7 @@ const express = require('express');
 const { isPrivateIp, validateIp } = require('../utils/ipUtils');
 const { collectDevice, VENDORS } = require('../collectors/deviceCollectors');
 const { runPing, runTracert } = require('../utils/networkTools');
-const { persistCollection, listCollectionHistory } = require('../services/supabaseService');
+const { persistCollection, listCollectionHistory, deleteCollectionHistory } = require('../services/supabaseService');
 
 const router = express.Router();
 
@@ -13,6 +13,20 @@ router.get('/devices/history', async (req, res, next) => {
   const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 30;
   try {
     return res.json({ status: 'success', ...(await listCollectionHistory(limit)) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete('/devices/history/:id', async (req, res, next) => {
+  const { id } = req.params;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    return res.status(400).json({ status: 'error', message: 'Identificador de coleta inválido.' });
+  }
+  try {
+    const result = await deleteCollectionHistory(id);
+    if (!result.deleted) return res.status(404).json({ status: 'error', message: 'Coleta não encontrada.' });
+    return res.json({ status: 'success', ...result });
   } catch (error) {
     return next(error);
   }
