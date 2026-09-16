@@ -1,15 +1,18 @@
-# Health Details
+# Health Details Agent API
 
-Aplicação web local para verificar disponibilidade, perda de pacotes, latência e rota de dispositivos de rede.
+Agente local que consulta os equipamentos de rede e registra o histórico no Supabase. Ele deve rodar em uma máquina que alcance os IPs privados dos equipamentos.
 
 ## Executar
 
 ```sh
 npm install
+npx playwright install chromium
 npm start
 ```
 
-Abra `http://127.0.0.1:8000`. Para desenvolvimento, use `npm run dev`; para executar os testes, `npm test`.
+Crie `.env` a partir de `.env.example`. A interface publicada no Vercel está configurada para procurar o agente em `http://127.0.0.1:8002` no mesmo computador.
+
+Para ativar o histórico, informe `SUPABASE_URL` e `SUPABASE_SECRET_KEY` no `.env`. A chave secreta é exclusiva do agente e nunca deve ser copiada para o frontend ou para o GitHub.
 
 ## Segurança
 

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const healthRoutes = require('./src/routes/healthRoutes');
 const collectorRoutes = require('./src/routes/collectorRoutes');
 
