@@ -28,7 +28,36 @@ async function persistCollection(collection) {
     })));
     if (clientError) throw clientError;
   }
-  return { persisted: true };
+
+  const { data: historyItem, error: historyError } = await supabase
+    .from('collection_history')
+    .insert({
+      device_id: savedDevice.id,
+      ip: device.ip,
+      vendor: device.vendor,
+      vendor_label: device.vendorLabel,
+      identity: device.identity,
+      uptime: device.uptime,
+      client_count: clients.length,
+      clients,
+      collected_at: device.collectedAt
+    })
+    .select('id')
+    .single();
+  if (historyError) throw historyError;
+
+  return { persisted: true, historyId: historyItem.id };
 }
 
-module.exports = { persistCollection };
+async function listCollectionHistory(limit = 30) {
+  if (!supabase) return { history: [], reason: 'Supabase não configurado.' };
+  const { data, error } = await supabase
+    .from('collection_history')
+    .select('id, ip, vendor, vendor_label, identity, uptime, client_count, clients, collected_at')
+    .order('collected_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return { history: data };
+}
+
+module.exports = { persistCollection, listCollectionHistory };

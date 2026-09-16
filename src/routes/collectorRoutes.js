@@ -2,11 +2,21 @@ const express = require('express');
 const { isPrivateIp, validateIp } = require('../utils/ipUtils');
 const { collectDevice, VENDORS } = require('../collectors/deviceCollectors');
 const { runPing, runTracert } = require('../utils/networkTools');
-const { persistCollection } = require('../services/supabaseService');
+const { persistCollection, listCollectionHistory } = require('../services/supabaseService');
 
 const router = express.Router();
 
 router.get('/collectors/vendors', (req, res) => res.json({ status: 'success', vendors: { auto: { label: 'Detectar automaticamente' }, ...VENDORS } }));
+
+router.get('/devices/history', async (req, res, next) => {
+  const requestedLimit = Number.parseInt(req.query.limit, 10);
+  const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 30;
+  try {
+    return res.json({ status: 'success', ...(await listCollectionHistory(limit)) });
+  } catch (error) {
+    return next(error);
+  }
+});
 
 router.post('/devices/collect', async (req, res, next) => {
   const { ip, vendor, credentials, protocol } = req.body || {};
