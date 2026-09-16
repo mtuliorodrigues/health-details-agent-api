@@ -39,6 +39,7 @@ router.get('/devices/collect/stream', async (req, res) => {
     const collection = await collectDevice({ ip, vendor, credentials: testCredentials, protocol, onProgress: (message) => send('log', { message }) });
     send('result', { ...collection, storage: await persistCollection(collection) });
   } catch (error) {
+    console.error('[collection stream] failed', { ip, vendor, message: error.message, code: error.code, statusCode: error.statusCode });
     send('error', { message: error.statusCode ? error.message : 'Falha durante a coleta.' });
   } finally {
     res.end();
