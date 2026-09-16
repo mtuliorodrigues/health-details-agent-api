@@ -20,7 +20,7 @@ Para ativar o histórico, informe `SUPABASE_URL` e `SUPABASE_SECRET_KEY` no `.en
 
 - Apenas IPv4 privado é aceito: `10.0.0.0/8`, `172.16.0.0/12` e `192.168.0.0/16`.
 - O acesso à API é permitido localmente. Para expor o serviço em outra máquina, defina `API_KEY` e envie-a no cabeçalho `X-API-Key`.
-- Ping e traceroute são limitados a 10 saltos e cinco segundos. A aplicação não coleta CPU, sinal, temperatura ou CCQ sem uma integração explícita via SNMP/API do fabricante.
+- O ping tem limite de cinco segundos. A aplicação não coleta CPU, sinal, temperatura ou CCQ sem uma integração explícita via SNMP/API do fabricante.
 
 ## Coleta de rádio por interface web
 

@@ -1,5 +1,5 @@
 const { normalizeIp } = require('../utils/ipUtils');
-const { runPing, runTracert } = require('../utils/networkTools');
+const { runPing } = require('../utils/networkTools');
 
 function calculateHealth(ping) {
   if (!ping.success) return 0;
@@ -15,7 +15,7 @@ async function getDeviceHealth(ip) {
     throw error;
   }
 
-  const [ping, traceroute] = await Promise.all([runPing(normalizedIp), runTracert(normalizedIp)]);
+  const ping = await runPing(normalizedIp);
   return {
     status: 'success',
     valid: true,
@@ -34,7 +34,6 @@ async function getDeviceHealth(ip) {
       memory: null,
       temp: null,
       ping,
-      traceroute,
       checkedAt: new Date().toISOString()
     }
   };

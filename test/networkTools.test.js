@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parsePing, parseTraceroute } = require('../src/utils/networkTools');
+const { parsePing } = require('../src/utils/networkTools');
 const { isPrivateIp, normalizeIp } = require('../src/utils/ipUtils');
 
 test('parseia resumo de ping do Windows', () => {
@@ -17,11 +17,6 @@ test('parseia resumo de ping Unix', () => {
   const result = parsePing('3 packets transmitted, 2 received, 33.333% packet loss\nrtt min/avg/max/mdev = 1.0/4.7/8.2/0.5 ms');
   assert.equal(result.packets.loss, 33.333);
   assert.equal(result.latency, 5);
-});
-
-test('mantém saltos com latência no traceroute', () => {
-  const hops = parseTraceroute('  1    1 ms    2 ms    3 ms  10.0.0.1\n  2     *        *        *');
-  assert.deepEqual(hops, [{ hop: 1, route: '10.0.0.1', latency: '2 ms' }, { hop: 2, route: '*', latency: null }]);
 });
 
 test('normaliza e restringe IPs a faixas privadas', () => {

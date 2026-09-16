@@ -1,7 +1,7 @@
 const express = require('express');
 const { isPrivateIp, validateIp } = require('../utils/ipUtils');
 const { collectDevice, VENDORS } = require('../collectors/deviceCollectors');
-const { runPing, runTracert } = require('../utils/networkTools');
+const { runPing } = require('../utils/networkTools');
 const { persistCollection, listCollectionHistory, deleteCollectionHistory } = require('../services/supabaseService');
 
 const router = express.Router();
@@ -70,19 +70,18 @@ router.get('/devices/collect/stream', async (req, res) => {
   }
 });
 
-async function runDiagnostic(req, res, next, type) {
+async function runPingDiagnostic(req, res, next) {
   const { ip } = req.body || {};
   if (!validateIp(ip)) return res.status(400).json({ status: 'error', message: 'IP IPv4 inválido.' });
   if (!isPrivateIp(ip)) return res.status(403).json({ status: 'error', message: 'Apenas endereços IPv4 privados são permitidos.' });
   try {
-    const result = type === 'ping' ? await runPing(ip) : await runTracert(ip);
-    return res.json({ status: 'success', [type]: result });
+    const ping = await runPing(ip);
+    return res.json({ status: 'success', ping });
   } catch (error) {
     return next(error);
   }
 }
 
-router.post('/devices/diagnostics/ping', (req, res, next) => runDiagnostic(req, res, next, 'ping'));
-router.post('/devices/diagnostics/traceroute', (req, res, next) => runDiagnostic(req, res, next, 'traceroute'));
+router.post('/devices/diagnostics/ping', runPingDiagnostic);
 
 module.exports = router;
