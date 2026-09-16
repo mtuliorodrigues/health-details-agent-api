@@ -1,13 +1,19 @@
-const { createSession, login, pageSnapshot, tableSnapshotAtXPath, textAtXPath } = require('./browserSession');
-const { clientsFromTable } = require('./collectorUtils');
+const { createSession, login, pageSnapshot, tableSnapshotAtXPath, classicTableSnapshotAtXPath, textAtXPath } = require('./browserSession');
+const { clientsFromTable, clientsFromUbiquitiText, ubiquitiUptimeFromText, clientFromUbiquitiDashboard, valueFromPanel, clientsFromM5Table } = require('./collectorUtils');
 
 const VENDORS = {
   mikrotik: { label: 'MikroTik', protocol: 'http', includeCcq: true },
-  'ubiquiti-ac': { label: 'Ubiquiti AC', protocol: 'https', includeCcq: false },
-  'ubiquiti-m5': { label: 'Ubiquiti M5', protocol: 'https', includeCcq: false }
+  'ubiquiti-ac': { label: 'Ubiquiti 5AC', protocol: 'http', includeCcq: false },
+  'ubiquiti-m5': { label: 'Ubiquiti M5', protocol: 'http', includeCcq: false }
 };
 const MIKROTIK_REGISTRATION_XPATH = '/html/body/div[3]/table/tbody/tr/td[2]/table/tbody/tr[3]';
 const MIKROTIK_CCQ_XPATH = '/html/body/div[3]/table/tbody/tr/td[2]/table/tbody/tr[3]/td/div/table[3]/tbody[31]';
+const UBIQUITI_DEVICE_NAME_XPATH = '/html/body/div[1]/div/div[4]/div/div/div[1]/div/div[2]/div[1]/div/div/div/div/div[1]/div/div/div/div[2]/div[2]';
+const UBIQUITI_UPTIME_XPATH = '/html/body/div[1]/div/div[4]/div/div/div[2]/div[4]/div/div/div[1]';
+const UBIQUITI_CLIENTS_XPATH = '/html/body/div[1]/div/div[4]/div/div/div[2]/div/div[2]';
+const M5_PANEL_XPATH = '/html/body/table/tbody/tr[3]/td';
+const UBIQUITI_PORTS = [8074, 8075, 8076];
+const UBIQUITI_DEFAULT_CREDENTIALS = [{ username: 'ubnt', password: 'play8074' }, { username: 'ubnt', password: 'Play8074' }, { username: 'admin', password: 'Play8074' }];
 
 function uptimeFromText(text) {
   const match = text.match(/(?:system\s+)?uptime\s*[:\-]?\s*([^\r\n]+)/i);
@@ -75,7 +81,14 @@ async function enrichMikrotikClientCcq(page, clients, onProgress) {
   }
 }
 
+function uniqueCredentials(credentials) { return [...(credentials?.username && credentials?.password ? [credentials] : []), ...UBIQUITI_DEFAULT_CREDENTIALS].filter((item, index, all) => all.findIndex((candidate) => candidate.username === item.username && candidate.password === item.password) === index); }
+async function ubiquitiSnapshots(page) { await page.waitForFunction((xpath) => Boolean(document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue?.innerText?.trim()), UBIQUITI_DEVICE_NAME_XPATH, { timeout: 8_000 }); const [identityText, uptimeText, clientsText, dashboardText] = await Promise.all([textAtXPath(page, UBIQUITI_DEVICE_NAME_XPATH), textAtXPath(page, UBIQUITI_UPTIME_XPATH), textAtXPath(page, UBIQUITI_CLIENTS_XPATH), page.locator('body').innerText()]); const clients = clientsFromUbiquitiText(clientsText); return { identity: identityText?.split(/\r?\n/).map((line) => line.trim()).find(Boolean) || null, uptime: ubiquitiUptimeFromText(uptimeText) || ubiquitiUptimeFromText(dashboardText), clients: clients.length ? clients : clientFromUbiquitiDashboard(dashboardText) }; }
+async function m5Snapshots(page) { await page.waitForFunction((xpath) => { const lines = (document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue?.innerText || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean); const value = (label) => { const index = lines.findIndex((line) => line.toLowerCase() === label); return index >= 0 && lines[index + 1] && !lines[index + 1].endsWith(':'); }; return value('device name:') && value('uptime:'); }, M5_PANEL_XPATH, { timeout: 8_000 }); const text = await textAtXPath(page, M5_PANEL_XPATH); await page.getByText(/stations/i, { exact: true }).first().click(); await page.waitForFunction((xpath) => { const text = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue?.innerText || ''; return /connection\s+time/i.test(text) && !/loading\.\.\./i.test(text); }, M5_PANEL_XPATH, { timeout: 8_000 }); return { identity: valueFromPanel(text, 'Device Name'), uptime: valueFromPanel(text, 'Uptime'), clients: clientsFromM5Table(await classicTableSnapshotAtXPath(page, M5_PANEL_XPATH)) }; }
+async function collectUbiquiti({ ip, definition, credentials, protocol, onProgress }) { for (const port of UBIQUITI_PORTS) { const candidates = definition.key === 'ubiquiti-m5' ? [...(credentials?.username && credentials?.password ? [credentials] : []), { username: 'ubnt', password: 'play8074' }] : uniqueCredentials(credentials); for (const candidate of candidates) { let session; try { onProgress(`Tentando ${definition.label} na porta ${port}.`); session = await createSession(ip, protocol || definition.protocol, port); await login(session.page, candidate, { requireForm: true }); const data = definition.key === 'ubiquiti-m5' ? await m5Snapshots(session.page) : await ubiquitiSnapshots(session.page); return { status: 'success', device: { ip, port, vendor: definition.key, vendorLabel: definition.label, identity: data.identity, uptime: data.uptime, collectedAt: new Date().toISOString() }, clients: data.clients, warnings: data.clients.length ? [] : ['O equipamento foi acessado, mas não retornou clientes no painel atual.'] }; } catch {} finally { await session?.close(); } } } const error = new Error('Não foi possível acessar o Ubiquiti nas portas 8074, 8075 ou 8076.'); error.statusCode = 502; throw error; }
+async function detectDevice({ ip, protocol, onProgress }) { for (const target of [{ vendor: 'mikrotik', port: null }, ...UBIQUITI_PORTS.map((port) => ({ vendor: 'ubiquiti', port }))]) { let session; try { onProgress(`Identificando tela de login${target.port ? ` na porta ${target.port}` : ''}.`); session = await createSession(ip, protocol || 'http', target.port); await session.page.waitForTimeout(750); const fingerprint = await session.page.evaluate(() => ({ title: document.title, text: document.body.innerText, classic: Boolean(document.querySelector('body > table')) })); const source = `${fingerprint.title}\n${fingerprint.text}`.toLowerCase(); if (/mikrotik|webfig/.test(source)) return 'mikrotik'; if (/airos/.test(source) || fingerprint.classic) return 'ubiquiti-m5'; if (/ubiquiti|5ac|nanostation|powerbeam/.test(source)) return 'ubiquiti-ac'; } catch {} finally { await session?.close(); } } const error = new Error('Não foi possível identificar o dispositivo.'); error.statusCode = 502; throw error; }
+
 async function collectDevice({ ip, vendor, credentials, protocol, onProgress = () => {} }) {
+  if (vendor === 'auto') { const detected = await detectDevice({ ip, protocol, onProgress }); onProgress(`Dispositivo identificado: ${VENDORS[detected].label}.`); return collectDevice({ ip, vendor: detected, credentials, protocol, onProgress }); }
   const definition = VENDORS[vendor];
   if (!definition) {
     const error = new Error('Tipo de dispositivo não suportado. Use mikrotik, ubiquiti-ac ou ubiquiti-m5.');
@@ -89,6 +102,7 @@ async function collectDevice({ ip, vendor, credentials, protocol, onProgress = (
   }
 
   onProgress(`Abrindo a interface ${definition.label}.`);
+  if (vendor !== 'mikrotik') return collectUbiquiti({ ip, definition: { ...definition, key: vendor }, credentials, protocol, onProgress });
   const session = await createSession(ip, protocol || definition.protocol);
   try {
     onProgress('Autenticando no equipamento.');
@@ -115,4 +129,4 @@ async function collectDevice({ ip, vendor, credentials, protocol, onProgress = (
   }
 }
 
-module.exports = { VENDORS, collectDevice };
+module.exports = { VENDORS, collectDevice, detectDevice };
