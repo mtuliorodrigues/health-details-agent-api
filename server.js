@@ -19,6 +19,7 @@ const configuredFrontendOrigin = process.env.FRONTEND_ORIGIN;
 function isAllowedOrigin(origin) {
   if (!origin || origin === `http://127.0.0.1:${PORT}`) return true;
   if (configuredFrontendOrigin === origin) return true;
+  if (origin === 'https://health-details-web.vercel.app') return true;
   return /^https:\/\/health-details-[a-z0-9-]+-tulio-s-org\.vercel\.app$/i.test(origin);
 }
 
