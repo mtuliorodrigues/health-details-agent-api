@@ -1,0 +1,4 @@
+# Public HTTPS entry point for the local diagnostic agent.
+hosthealthdetails.ddns.net {
+	reverse_proxy 127.0.0.1:8002
+}
