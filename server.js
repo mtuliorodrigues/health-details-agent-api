@@ -14,9 +14,21 @@ const API_KEY = process.env.API_KEY;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 30;
 const requestBuckets = new Map();
+const configuredFrontendOrigin = process.env.FRONTEND_ORIGIN;
+
+function isAllowedOrigin(origin) {
+  if (!origin || origin === `http://127.0.0.1:${PORT}`) return true;
+  if (configuredFrontendOrigin === origin) return true;
+  return /^https:\/\/health-details-[a-z0-9-]+-tulio-s-org\.vercel\.app$/i.test(origin);
+}
 
 app.disable('x-powered-by');
-app.use(cors({ origin: process.env.FRONTEND_ORIGIN || `http://127.0.0.1:${PORT}` }));
+app.use(cors({
+  origin(origin, callback) {
+    const allowed = isAllowedOrigin(origin);
+    callback(allowed ? null : new Error('Origem não permitida pelo agente.'), allowed);
+  }
+}));
 app.use(express.json());
 
 app.use('/api', (req, res, next) => {
@@ -39,7 +51,7 @@ app.use('/api', healthRoutes);
 app.use('/api', collectorRoutes);
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'health-details' });
+  res.json({ status: 'ok', service: 'host-health-diagnostic' });
 });
 
 app.use((error, req, res, next) => {
@@ -48,5 +60,5 @@ app.use((error, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Health Details running at http://127.0.0.1:${PORT}`);
+  console.log(`Host Health Diagnostic running at http://127.0.0.1:${PORT}`);
 });

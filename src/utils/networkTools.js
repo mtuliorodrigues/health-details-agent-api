@@ -14,13 +14,13 @@ async function runPing(ip) {
   const isWindows = process.platform === 'win32';
   const { error, stdout, stderr } = await execute('ping', isWindows ? ['-n', '4', '-w', '1000', ip] : ['-c', '4', '-W', '1', ip]);
   const parsed = parsePing(stdout);
-  return { success: !error && parsed.packets.received > 0, packets: parsed.packets, latency: parsed.latency, error: error ? 'Ping não respondeu.' : null, output: (stdout || stderr).trim().slice(0, 240) };
+  return { success: !error && parsed.packets.received > 0, packets: parsed.packets, latency: parsed.latency, error: error ? 'Ping não respondeu.' : null, output: (stdout || stderr).trim() };
 }
 
 async function runTracert(ip) {
   const isWindows = process.platform === 'win32';
   const { error, stdout, stderr } = await execute(isWindows ? 'tracert' : 'traceroute', isWindows ? ['-d', '-h', '10', '-w', '1000', ip] : ['-n', '-m', '10', '-w', '1', ip]);
-  return { success: !error, hops: parseTraceroute(stdout), error: error ? 'Traceroute não foi concluído.' : null, output: (stdout || stderr).trim().slice(0, 250) };
+  return { success: !error, hops: parseTraceroute(stdout), error: error ? 'Traceroute não foi concluído.' : null, output: (stdout || stderr).trim() };
 }
 
 function parsePing(output = '') {

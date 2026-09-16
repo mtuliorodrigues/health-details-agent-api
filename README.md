@@ -1,4 +1,4 @@
-# Health Details Agent API
+# Host Health Diagnostic Agent API
 
 Agente local que consulta os equipamentos de rede e registra o histórico no Supabase. Ele deve rodar em uma máquina que alcance os IPs privados dos equipamentos.
 

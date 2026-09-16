@@ -1,7 +1,7 @@
 {
-  "name": "health-details",
-  "version": "1.0.0",
-  "description": "Aplicativo web para monitoramento de saúde e status de dispositivos Mikrotik e Ubiquiti.",
+  "name": "host-health-diagnostic-agent",
+  "version": "2.0.0",
+  "description": "Agente local do Host Health Diagnostic para MikroTik e Ubiquiti.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
