@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { createAgentAuth } = require('./src/middleware/agentAuth');
 
 if (typeof process.loadEnvFile === 'function') {
   process.loadEnvFile(path.join(__dirname, '.env'));
@@ -15,6 +16,8 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 30;
 const requestBuckets = new Map();
 const configuredFrontendOrigin = process.env.FRONTEND_ORIGIN;
+const agentAuthRequired = process.env.AGENT_AUTH_REQUIRED === 'true';
+const agentApiKey = process.env.AGENT_API_KEY;
 
 function isAllowedOrigin(origin) {
   if (!origin || origin === `http://127.0.0.1:${PORT}`) return true;
@@ -31,6 +34,8 @@ app.use(cors({
   }
 }));
 app.use(express.json());
+
+app.use('/api', createAgentAuth({ required: agentAuthRequired, expectedKey: agentApiKey }));
 
 app.use('/api', (req, res, next) => {
   const now = Date.now();

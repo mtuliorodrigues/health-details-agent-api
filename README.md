@@ -16,6 +16,8 @@ Crie `.env` a partir de `.env.example`. A interface publicada no Vercel está co
 
 Para ativar o histórico, informe `SUPABASE_URL` e `SUPABASE_SECRET_KEY` no `.env`. A chave secreta é exclusiva do agente e nunca deve ser copiada para o frontend ou para o GitHub.
 
+O agente já inclui validação interna por `AGENT_API_KEY`. Enquanto `AGENT_AUTH_REQUIRED=false`, a validação permanece em modo de compatibilidade e não altera as chamadas atuais. A exigência será ativada apenas quando o proxy autenticado estiver configurado.
+
 ## Segurança
 
 - Apenas IPv4 privado é aceito: `10.0.0.0/8`, `172.16.0.0/12` e `192.168.0.0/16`.
