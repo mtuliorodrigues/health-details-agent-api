@@ -36,6 +36,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api', createAgentAuth({ required: agentAuthRequired, expectedKey: agentApiKey }));
+app.use('/api', require('./src/routes/loginAttemptRoutes'));
 
 app.use('/api', (req, res, next) => {
   const now = Date.now();
