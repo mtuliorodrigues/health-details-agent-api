@@ -11,8 +11,10 @@ router.get('/collectors/vendors', (req, res) => res.json({ status: 'success', ve
 router.get('/devices/history', async (req, res, next) => {
   const requestedLimit = Number.parseInt(req.query.limit, 10);
   const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 30;
+  const page = Number.parseInt(req.query.page, 10) || 1;
+  const { ip = '', vendor = '', from = '', to = '', status = '' } = req.query;
   try {
-    return res.json({ status: 'success', ...(await listCollectionHistory(limit)) });
+    return res.json({ status: 'success', ...(await listCollectionHistory({ limit, page, ip, vendor, from, to, status })) });
   } catch (error) {
     return next(error);
   }
