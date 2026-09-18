@@ -2,11 +2,24 @@ const express = require('express');
 const { isPrivateIp, validateIp } = require('../utils/ipUtils');
 const { collectDevice, VENDORS } = require('../collectors/deviceCollectors');
 const { runPing } = require('../utils/networkTools');
-const { persistCollection, listCollectionHistory, deleteCollectionHistory } = require('../services/supabaseService');
+const { persistCollection, persistCollectionFailure, listCollectionHistory, deleteCollectionHistory } = require('../services/supabaseService');
 
 const router = express.Router();
 
 router.get('/collectors/vendors', (req, res) => res.json({ status: 'success', vendors: { auto: { label: 'Detectar automaticamente' }, ...VENDORS } }));
+
+function safeFailureMessage(error) {
+  if (error?.statusCode === 400 || error?.statusCode === 403 || error?.statusCode === 502) return error.message;
+  return 'Falha durante a coleta. Verifique se o equipamento está acessível e tente novamente.';
+}
+
+async function recordFailure({ ip, vendor, error }) {
+  try {
+    await persistCollectionFailure({ ip, vendor: vendor || 'unknown', vendorLabel: VENDORS[vendor]?.label || (vendor === 'auto' ? 'Detecção automática' : null), errorMessage: safeFailureMessage(error) });
+  } catch (storageError) {
+    console.error('[collection failure history] failed', { message: storageError.message });
+  }
+}
 
 router.get('/devices/history', async (req, res, next) => {
   const requestedLimit = Number.parseInt(req.query.limit, 10);
@@ -46,6 +59,7 @@ router.post('/devices/collect', async (req, res, next) => {
     const collection = await collectDevice({ ip, vendor, credentials: credentials || testCredentials, protocol });
     return res.json({ ...collection, storage: await persistCollection(collection) });
   } catch (error) {
+    await recordFailure({ ip, vendor, error });
     return next(error);
   }
 });
@@ -66,6 +80,7 @@ router.get('/devices/collect/stream', async (req, res) => {
     send('result', { ...collection, storage: await persistCollection(collection) });
   } catch (error) {
     console.error('[collection stream] failed', { ip, vendor, message: error.message, code: error.code, statusCode: error.statusCode });
+    await recordFailure({ ip, vendor, error });
     send('error', { message: error.statusCode ? error.message : 'Falha durante a coleta.' });
   } finally {
     res.end();
